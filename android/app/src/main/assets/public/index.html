@@ -1521,8 +1521,8 @@ function renderPassoFotos(){
       '<input type="file" accept="image/*" capture="environment" id="cam_'+slot.id+'" style="display:none" onchange="onFotoSlotSelecionada(event,\''+slot.id+'\')">'+
       '<input type="file" accept="image/*" id="gal_'+slot.id+'" style="display:none" onchange="onFotoSlotSelecionada(event,\''+slot.id+'\')">'+
       '<div class="btn-row">'+
-      '<button class="btn btn-amber btn-sm" style="flex:1;" onclick="document.getElementById(\'cam_'+slot.id+'\').click()">📷 Tirar foto agora</button>'+
-      '<button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById(\'gal_'+slot.id+'\').click()">Escolher da galeria</button>'+
+      '<button class="btn btn-amber btn-sm" style="flex:1;" onclick="capturarFoto(\''+slot.id+'\',\'camera\')">📷 Tirar foto agora</button>'+
+      '<button class="btn btn-outline btn-sm" style="flex:1;" onclick="capturarFoto(\''+slot.id+'\',\'galeria\')">Escolher da galeria</button>'+
       '</div>'+
       '</div>';
   });
@@ -1530,8 +1530,8 @@ function renderPassoFotos(){
   html += '<input type="file" accept="image/*" capture="environment" id="cam_extra" style="display:none" onchange="onFotoExtraSelecionada(event)">';
   html += '<input type="file" accept="image/*" id="gal_extra" style="display:none" onchange="onFotoExtraSelecionada(event)">';
   html += '<div class="btn-row">'+
-    '<button class="btn btn-amber btn-sm" style="flex:1;" onclick="document.getElementById(\'cam_extra\').click()">📷 Tirar foto</button>'+
-    '<button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById(\'gal_extra\').click()">Da galeria</button>'+
+    '<button class="btn btn-amber btn-sm" style="flex:1;" onclick="capturarFotoExtra(\'camera\')">📷 Tirar foto</button>'+
+    '<button class="btn btn-outline btn-sm" style="flex:1;" onclick="capturarFotoExtra(\'galeria\')">Da galeria</button>'+
     '</div>';
   html += '<div class="extras-grid" id="extrasGrid">' + fotosAtual.extras.map((f,idx)=>
       '<div class="photo-thumb"><img src="'+f.dataUrl+'"><button class="rm" onclick="removerFotoExtra('+idx+')">&times;</button></div>'
@@ -1566,53 +1566,103 @@ function removerFotoExtra(idx){
 function lerECarimbar(file, slotLabel){
   return new Promise(resolve=>{
     const reader = new FileReader();
-    reader.onload = e=>{
-      const img = new Image();
-      img.onload = ()=>{
-        // redimensiona (máx 1600px no maior lado) para manter o app leve com 51 fichas
-        const MAX = 1600;
-        let w = img.width, h = img.height;
-        if(w>h && w>MAX){ h = Math.round(h*MAX/w); w = MAX; }
-        else if(h>=w && h>MAX){ w = Math.round(w*MAX/h); h = MAX; }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img,0,0,w,h);
-
-        const lat = fichaAtual['utm_n'] || '';
-        const lon = fichaAtual['utm_e'] || '';
-        const fuso = fichaAtual['utm_fuso'] || '';
-        const codigo = fichaAtual['codigo'] || 'Sem código';
-        const agora = new Date();
-        const dataStr = agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-
-        const nomeSlot = {montante:'Fotografia montante', jusante:'Fotografia jusante', estrutura:'Fotografia da estrutura', adicional:'Foto adicional'}[slotLabel] || slotLabel;
-        const linha1 = codigo + ' — ' + nomeSlot;
-        const linha2 = (lat||lon) ? ('UTM E '+lat+'  N '+lon+(fuso?'  Fuso '+fuso:'')) : 'Coordenadas UTM não informadas';
-        const linha3 = dataStr;
-
-        const pad = Math.max(12, w*0.02);
-        const fontSize = Math.max(14, Math.round(w*0.026));
-        const barHeight = fontSize*3.3 + pad*1.1;
-
-        ctx.fillStyle = 'rgba(10,14,10,0.62)';
-        ctx.fillRect(0, h-barHeight, w, barHeight);
-        ctx.fillStyle = '#F4D98C';
-        ctx.font = '700 '+fontSize+'px sans-serif';
-        ctx.fillText(linha1, pad, h-barHeight+pad+fontSize*0.9);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = (fontSize*0.82)+'px monospace';
-        ctx.fillText(linha2, pad, h-barHeight+pad+fontSize*2.0);
-        ctx.fillStyle = '#D8DCD4';
-        ctx.font = (fontSize*0.76)+'px sans-serif';
-        ctx.fillText(linha3, pad, h-barHeight+pad+fontSize*2.95);
-
-        resolve(canvas.toDataURL('image/jpeg',0.82));
-      };
-      img.src = e.target.result;
-    };
+    reader.onload = e=>{ carimbarDataUrl(e.target.result, slotLabel).then(resolve); };
     reader.readAsDataURL(file);
   });
+}
+
+function carimbarDataUrl(dataUrlOriginal, slotLabel){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      // redimensiona (máx 1600px no maior lado) para manter o app leve com 51 fichas
+      const MAX = 1600;
+      let w = img.width, h = img.height;
+      if(w>h && w>MAX){ h = Math.round(h*MAX/w); w = MAX; }
+      else if(h>=w && h>MAX){ w = Math.round(w*MAX/h); h = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+
+      const lat = fichaAtual['utm_n'] || '';
+      const lon = fichaAtual['utm_e'] || '';
+      const fuso = fichaAtual['utm_fuso'] || '';
+      const codigo = fichaAtual['codigo'] || 'Sem código';
+      const agora = new Date();
+      const dataStr = agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+      const nomeSlot = {montante:'Fotografia montante', jusante:'Fotografia jusante', estrutura:'Fotografia da estrutura', adicional:'Foto adicional'}[slotLabel] || slotLabel;
+      const linha1 = codigo + ' — ' + nomeSlot;
+      const linha2 = (lat||lon) ? ('UTM E '+lat+'  N '+lon+(fuso?'  Fuso '+fuso:'')) : 'Coordenadas UTM não informadas';
+      const linha3 = dataStr;
+
+      const pad = Math.max(12, w*0.02);
+      const fontSize = Math.max(14, Math.round(w*0.026));
+      const barHeight = fontSize*3.3 + pad*1.1;
+
+      ctx.fillStyle = 'rgba(10,14,10,0.62)';
+      ctx.fillRect(0, h-barHeight, w, barHeight);
+      ctx.fillStyle = '#F4D98C';
+      ctx.font = '700 '+fontSize+'px sans-serif';
+      ctx.fillText(linha1, pad, h-barHeight+pad+fontSize*0.9);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = (fontSize*0.82)+'px monospace';
+      ctx.fillText(linha2, pad, h-barHeight+pad+fontSize*2.0);
+      ctx.fillStyle = '#D8DCD4';
+      ctx.font = (fontSize*0.76)+'px sans-serif';
+      ctx.fillText(linha3, pad, h-barHeight+pad+fontSize*2.95);
+
+      resolve(canvas.toDataURL('image/jpeg',0.82));
+    };
+    img.src = dataUrlOriginal;
+  });
+}
+
+/* ---- Captura via plugin nativo (dentro do app empacotado) com fallback pro input HTML (navegador/PWA) ---- */
+function temCameraNativa(){
+  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() &&
+    window.Capacitor.Plugins && window.Capacitor.Plugins.Camera);
+}
+async function capturarFoto(slotId, modo){
+  if(temCameraNativa()){
+    try{
+      const foto = await window.Capacitor.Plugins.Camera.getPhoto({
+        quality: 82,
+        resultType: 'dataUrl',
+        source: modo==='camera' ? 'CAMERA' : 'PHOTOS',
+        saveToGallery: false,
+        correctOrientation: true
+      });
+      const stamped = await carimbarDataUrl(foto.dataUrl, slotId);
+      fotosAtual[slotId] = {dataUrl: stamped, timestamp:new Date().toISOString()};
+      renderPasso();
+    }catch(e){
+      if(e && e.message && !/cancel/i.test(e.message)) toast('Não foi possível obter a foto: '+e.message);
+    }
+    return;
+  }
+  document.getElementById((modo==='camera'?'cam_':'gal_')+slotId).click();
+}
+async function capturarFotoExtra(modo){
+  if(temCameraNativa()){
+    try{
+      const foto = await window.Capacitor.Plugins.Camera.getPhoto({
+        quality: 82,
+        resultType: 'dataUrl',
+        source: modo==='camera' ? 'CAMERA' : 'PHOTOS',
+        saveToGallery: false,
+        correctOrientation: true
+      });
+      const stamped = await carimbarDataUrl(foto.dataUrl, 'adicional');
+      fotosAtual.extras.push({dataUrl: stamped, timestamp:new Date().toISOString()});
+      renderPasso();
+    }catch(e){
+      if(e && e.message && !/cancel/i.test(e.message)) toast('Não foi possível obter a foto: '+e.message);
+    }
+    return;
+  }
+  document.getElementById(modo==='camera'?'cam_extra':'gal_extra').click();
 }
 
 /* ======================================================================

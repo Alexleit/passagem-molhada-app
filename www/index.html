@@ -1620,9 +1620,11 @@ function carimbarDataUrl(dataUrlOriginal, slotLabel){
 }
 
 /* ---- Captura via plugin nativo (dentro do app empacotado) com fallback pro input HTML (navegador/PWA) ---- */
+function ehAppNativo(){
+  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+}
 function temCameraNativa(){
-  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() &&
-    window.Capacitor.Plugins && window.Capacitor.Plugins.Camera);
+  return ehAppNativo() && !!(window.Capacitor.Plugins && window.Capacitor.Plugins.Camera);
 }
 async function capturarFoto(slotId, modo){
   if(temCameraNativa()){
@@ -2020,8 +2022,28 @@ async function gerarRelatorioPDF(ids){
   const nomeArquivo = lista.length===1
     ? ('passagem_molhada_'+(lista[0].codigo||'ficha').replace(/[^a-zA-Z0-9_-]/g,'_')+'.pdf')
     : 'passagem_molhada_cadastrada.pdf';
-  doc.save(nomeArquivo);
-  toast('PDF gerado: '+lista.length+' ficha(s)');
+
+  if(ehAppNativo() && window.Capacitor.Plugins.Filesystem){
+    try{
+      const base64 = doc.output('datauristring').split(',')[1];
+      const { Filesystem, Share } = window.Capacitor.Plugins;
+      let resultado;
+      try{
+        resultado = await Filesystem.writeFile({ path: nomeArquivo, data: base64, directory: 'DOCUMENTS', recursive: true });
+      }catch(e1){
+        resultado = await Filesystem.writeFile({ path: nomeArquivo, data: base64, directory: 'CACHE', recursive: true });
+      }
+      if(Share){
+        await Share.share({ title: nomeArquivo, url: resultado.uri, dialogTitle: 'Salvar ou enviar PDF' });
+      }
+      toast('PDF gerado: '+lista.length+' ficha(s)');
+    }catch(e){
+      toast('Não foi possível salvar o PDF: '+(e&&e.message?e.message:'erro desconhecido'));
+    }
+  } else {
+    doc.save(nomeArquivo);
+    toast('PDF gerado: '+lista.length+' ficha(s)');
+  }
 }
 
 /* ======================================================================
