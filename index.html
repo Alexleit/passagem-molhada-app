@@ -955,17 +955,13 @@ function fecharLogoAmpliada(){
 let pontosMedicao = [];
 let campoAlvoMedicao = null;
 
-function distanciaMetros(lat1, lon1, lat2, lon2){
-  const R = 6371000;
-  const toRad = g => g*Math.PI/180;
-  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return R * 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+function distanciaMetrosUTM(e1, n1, e2, n2){
+  return Math.sqrt((e2-e1)**2 + (n2-n1)**2);
 }
 function distanciaTotalMedicao(){
   let total = 0;
   for(let i=1;i<pontosMedicao.length;i++){
-    total += distanciaMetros(pontosMedicao[i-1].lat, pontosMedicao[i-1].lon, pontosMedicao[i].lat, pontosMedicao[i].lon);
+    total += distanciaMetrosUTM(pontosMedicao[i-1].e, pontosMedicao[i-1].n, pontosMedicao[i].e, pontosMedicao[i].n);
   }
   return total;
 }
@@ -984,11 +980,11 @@ function renderMedicaoOverlay(){
   const total = distanciaTotalMedicao();
   lista.innerHTML = pontosMedicao.length ? pontosMedicao.map((p,i)=>
     '<div class="entry-meta" style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);">'+
-    '<span>Ponto '+(i+1)+' — '+p.lat.toFixed(6)+', '+p.lon.toFixed(6)+'</span>'+
+    '<span>Ponto '+(i+1)+' — E '+p.e.toFixed(1)+', N '+p.n.toFixed(1)+' (fuso '+p.zona+')</span>'+
     '<button class="link-btn" style="color:var(--danger);" onclick="removerPontoMedicao('+i+')">remover</button></div>'
   ).join('') : '<div class="hint" style="margin:0;">Nenhum ponto marcado ainda.</div>';
   document.getElementById('medicaoTotal').textContent = pontosMedicao.length>=2
-    ? total.toFixed(1)+' m'
+    ? total.toFixed(2)+' m'
     : (pontosMedicao.length===1 ? 'marque mais um ponto' : '—');
   document.getElementById('btnAplicarMedicao').disabled = pontosMedicao.length<2;
 }
@@ -998,7 +994,8 @@ function marcarPontoMedicao(){
   btn.disabled = true;
   btn.innerHTML = 'Obtendo sinal de GPS...';
   obterPosicaoAtual({enableHighAccuracy:true, timeout:15000, maximumAge:0}).then(function(pos){
-    pontosMedicao.push({lat:pos.coords.latitude, lon:pos.coords.longitude});
+    const utm = latLonParaUTM(pos.coords.latitude, pos.coords.longitude);
+    pontosMedicao.push({e:parseFloat(utm.easting), n:parseFloat(utm.northing), zona:utm.zona});
     renderMedicaoOverlay();
     btn.disabled = false;
     btn.innerHTML = original;
@@ -1018,10 +1015,10 @@ function removerPontoMedicao(idx){
 function aplicarMedicaoGps(){
   if(pontosMedicao.length<2) return;
   const total = distanciaTotalMedicao();
-  fichaAtual[campoAlvoMedicao] = total.toFixed(1);
+  fichaAtual[campoAlvoMedicao] = total.toFixed(2);
   renderPasso();
   fecharMedicaoGps();
-  toast('Comprimento preenchido: '+total.toFixed(1)+' m');
+  toast('Comprimento preenchido: '+total.toFixed(2)+' m');
 }
 
 function toast(msg){
