@@ -1499,6 +1499,44 @@ function obterLatLonFicha(f){
   if(f.utm_e && f.utm_n && f.utm_fuso) return utmParaLatLon(f.utm_e, f.utm_n, f.utm_fuso);
   return null;
 }
+async function renderizarMapaParaImagem(lat, lon){
+  if(lat==null || lon==null) return null;
+  const z = MAPA_DETALHE_ZOOM;
+  const cx = Math.floor(lon2x(lon, z));
+  const cy = Math.floor(lat2y(lat, z));
+  const range = {xMin:cx-MAPA_DETALHE_RAIO, xMax:cx+MAPA_DETALHE_RAIO, yMin:cy-MAPA_DETALHE_RAIO, yMax:cy+MAPA_DETALHE_RAIO};
+  const tileSizePx = 256;
+  const wTiles = range.xMax-range.xMin+1, hTiles = range.yMax-range.yMin+1;
+  const canvas = document.createElement('canvas');
+  canvas.width = wTiles*tileSizePx;
+  canvas.height = hTiles*tileSizePx;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#dfe3d8';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  await desenharTilesEmCanvas(ctx, range, z, tileSizePx, range.xMin, range.yMin, false); // tenta cache, e busca o que faltar se houver internet
+  desenharPin(ctx, lon, lat, z, range.xMin, range.yMin, tileSizePx, '#A33B2E');
+  try{ return canvas.toDataURL('image/jpeg', 0.85); }catch(e){ return null; }
+}
+async function renderizarMapaGeralParaImagem(fichasParaPin){
+  const bbox = kmlBBox();
+  const z = MAPA_GERAL_ZOOM;
+  const range = tileRangeForBBox(bbox, z);
+  const tileSizePx = 256;
+  const wTiles = range.xMax-range.xMin+1, hTiles = range.yMax-range.yMin+1;
+  const canvas = document.createElement('canvas');
+  canvas.width = wTiles*tileSizePx;
+  canvas.height = hTiles*tileSizePx;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#dfe3d8';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  await desenharTilesEmCanvas(ctx, range, z, tileSizePx, range.xMin, range.yMin, false);
+  desenharPoligonoKml(ctx, z, range.xMin, range.yMin, tileSizePx);
+  (fichasParaPin||[]).forEach(f=>{
+    const ll = obterLatLonFicha(f);
+    if(ll) desenharPin(ctx, ll.lon, ll.lat, z, range.xMin, range.yMin, tileSizePx, '#A33B2E');
+  });
+  try{ return canvas.toDataURL('image/jpeg', 0.85); }catch(e){ return null; }
+}
 
 /* ---- Mapa de detalhe (dentro da ficha, Seção 1) ---- */
 async function renderMapaDetalheFicha(){
@@ -1996,6 +2034,27 @@ async function gerarRelatorioPDF(ids){
     });
   }
 
+  // Mapa geral da área (uma vez por relatório, sempre que houver alguma coordenada)
+  const algumaCoordenada = lista.some(f=>obterLatLonFicha(f));
+  if(algumaCoordenada || lista.length>1){
+    const mapaGeralImg = await renderizarMapaGeralParaImagem(lista);
+    if(mapaGeralImg){
+      novaPagina();
+      tituloSecao('Mapa geral da área de estudo');
+      const larguraDisp = pageW - margin*2;
+      const alturaImg = larguraDisp * 0.62; // proporção aproximada do bbox da bacia
+      checkQuebra(alturaImg+8);
+      doc.addImage(mapaGeralImg, 'JPEG', margin, y, larguraDisp, alturaImg);
+      doc.setDrawColor(215,217,204);
+      doc.rect(margin, y, larguraDisp, alturaImg);
+      y += alturaImg + 5;
+      doc.setFontSize(7.5);
+      doc.setTextColor(75,86,79);
+      doc.text('Linha tracejada: contorno da área de estudo. Pontos vermelhos: fichas incluídas neste relatório.', margin, y);
+      y += 6;
+    }
+  }
+
   for(let i=0;i<lista.length;i++){
     const f = lista[i];
     novaPagina();
@@ -2017,6 +2076,24 @@ async function gerarRelatorioPDF(ids){
       });
       y += 2;
     });
+
+    // Mapa de localização
+    const llPdf = obterLatLonFicha(f);
+    if(llPdf){
+      const mapaImg = await renderizarMapaParaImagem(llPdf.lat, llPdf.lon);
+      if(mapaImg){
+        tituloSecao('Localização');
+        const mapaTam = 78;
+        checkQuebra(mapaTam+8);
+        doc.addImage(mapaImg, 'JPEG', margin, y, mapaTam, mapaTam);
+        doc.setDrawColor(215,217,204);
+        doc.rect(margin, y, mapaTam, mapaTam);
+        doc.setFontSize(7.5);
+        doc.setTextColor(75,86,79);
+        doc.text('Imagem de satélite — ponto marcado em vermelho', margin, y+mapaTam+4.5);
+        y += mapaTam+10;
+      }
+    }
 
     // Fotos
     const fotos = [];
