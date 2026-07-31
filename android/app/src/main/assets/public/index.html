@@ -169,6 +169,7 @@
   <div class="tabs">
     <div class="tab active" id="tabFormBtn" onclick="showView('form')">Nova ficha</div>
     <div class="tab" id="tabListBtn" onclick="showView('list')">Cadastradas <span class="count" id="countBadge">0</span></div>
+    <div class="tab" id="tabMapaBtn" onclick="showView('mapa')">Mapa</div>
   </div>
 </header>
 
@@ -220,6 +221,22 @@
     <div id="listContainer"></div>
   </section>
 
+  <!-- MAPA VIEW -->
+  <section class="view" id="view-mapa">
+    <div class="card">
+      <h2>Mapa da área de estudo</h2>
+      <div class="hint" id="mapaStatus" style="margin-top:-9px;">Carregando...</div>
+      <div id="mapaCanvasWrap" style="position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#dfe3d8;">
+        <canvas id="mapaCanvas" style="display:block;width:100%;height:auto;"></canvas>
+      </div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="atualizarMinhaLocalizacaoMapa()">📍 Minha localização</button>
+        <button class="btn btn-amber btn-sm" style="flex:1;" id="btnBaixarMapa" onclick="baixarTilesMapaGeral()">⬇️ Baixar/atualizar imagens</button>
+      </div>
+      <div class="hint" id="mapaLegenda" style="margin-top:10px;">🟡 contorno da área &nbsp; 🔵 sua localização &nbsp; 🔴 fichas cadastradas</div>
+    </div>
+  </section>
+
 </main>
 
 <div class="bottombar" id="bottomBarList" style="display:none;">
@@ -267,6 +284,23 @@
 <div class="logo-overlay" id="logoOverlay" onclick="fecharLogoAmpliada()">
   <span class="close-hint">Toque para fechar</span>
   <img src="data:image/jpeg;base64,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" alt="Logo do projeto ampliada">
+</div>
+
+<div class="sheet-overlay" id="medicaoOverlay">
+  <div class="sheet">
+    <h3>Medir por GPS</h3>
+    <p>Caminhe até cada extremidade (ou ponto de inflexão) e toque em "Marcar ponto atual". Com 2 ou mais pontos, o app soma a distância entre eles.</p>
+    <div id="medicaoPontos" style="margin-bottom:12px;max-height:180px;overflow-y:auto;"></div>
+    <div class="field" style="display:flex;justify-content:space-between;align-items:center;background:var(--shade);border-radius:9px;padding:10px 14px;margin-bottom:14px;">
+      <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600;">Distância total</span>
+      <span id="medicaoTotal" class="coord-value" style="font-weight:700;">—</span>
+    </div>
+    <button class="btn btn-amber" id="btnMarcarPonto" onclick="marcarPontoMedicao()" style="margin-bottom:10px;">Marcar ponto atual</button>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="fecharMedicaoGps()">Cancelar</button>
+      <button class="btn btn-moss" id="btnAplicarMedicao" onclick="aplicarMedicaoGps()" disabled>Usar este valor</button>
+    </div>
+  </div>
 </div>
 
 <!--JSPDF_INSERT-->
@@ -679,7 +713,7 @@ const LOGO_DATAURL = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAM
 const STEPS = [
   { id:'ident', tipo:'campos', titulo:'1. Identificação', campos:[
     {id:'codigo', label:'Código da passagem molhada', type:'text', ph:'Ex: PM-01'},
-    {id:'municipio', label:'Município', type:'text'},
+    {id:'municipio', label:'Município', type:'text', geocodificar:true},
     {id:'utm_e', label:'UTM Leste (E)', type:'text', mono:true, w:'third'},
     {id:'utm_n', label:'UTM Norte (N)', type:'text', mono:true, w:'third'},
     {id:'utm_fuso', label:'Fuso', type:'text', mono:true, w:'third'},
@@ -691,8 +725,8 @@ const STEPS = [
   { id:'fotos', tipo:'fotos', titulo:'Registro fotográfico' },
   { id:'estrutura', tipo:'campos', titulo:'2. Caracterização da Estrutura', campos:[
     {id:'tipo_estrutura', label:'Tipo de estrutura', type:'radio', options:['Vau/soleira','Bueiro simples','Bueiro múltiplo','Ponte baixa','Outro'], outro:true},
-    {id:'comprimento', label:'Comprimento (m)', type:'number', w:'half'},
-    {id:'largura_plataforma', label:'Largura da plataforma (m)', type:'number', w:'half'},
+    {id:'comprimento', label:'Comprimento (m)', type:'number', w:'half', medirGps:true},
+    {id:'largura_plataforma', label:'Largura da plataforma (m)', type:'number', w:'half', medirGps:true},
     {id:'altura_maxima', label:'Altura máxima (m)', type:'number', w:'half'},
     {id:'cota_tabuleiro', label:'Cota do tabuleiro (m)', type:'number', w:'half'},
     {id:'material_construtivo', label:'Material construtivo', type:'checkbox', options:['Concreto','Alvenaria','Gabião','Madeira','Metálico','Outro'], outro:true},
@@ -709,10 +743,10 @@ const STEPS = [
     {id:'obs_campo_1', label:'Observações gerais da equipe em campo', type:'textarea'},
   ]},
   { id:'hidraulico', tipo:'campos', titulo:"4. Dados Hidráulicos (HEC-RAS)", campos:[
-    {id:'largura_calha', label:'Largura da calha principal (m)', type:'number', w:'half'},
+    {id:'largura_calha', label:'Largura da calha principal (m)', type:'number', w:'half', medirGps:true},
     {id:'profundidade_media', label:'Profundidade média (m)', type:'number', w:'half'},
-    {id:'largura_planicie', label:'Largura da planície de inundação (m)', type:'number', w:'half'},
-    {id:'largura_util', label:'Largura útil da estrutura (m)', type:'number', w:'half'},
+    {id:'largura_planicie', label:'Largura da planície de inundação (m)', type:'number', w:'half', medirGps:true},
+    {id:'largura_util', label:'Largura útil da estrutura (m)', type:'number', w:'half', medirGps:true},
     {id:'altura_hidraulica', label:"Altura hidráulica disponível (m)", type:'number', w:'half', hint:'Diferença entre a altura hidráulica a montante e a jusante'},
     {id:'num_celulas', label:'Nº de células/tubos', type:'number', w:'half'},
     {id:'diametro_tubos', label:'Diâmetro dos tubos (m) — se aplicável', type:'number'},
@@ -778,7 +812,7 @@ const PHOTO_SLOTS = [
    BANCO LOCAL (IndexedDB) — suporta muitas fichas com fotos sem limite
    apertado do localStorage
    ====================================================================== */
-const DB_NAME='vistoriaPassagemMolhadaDB', DB_VERSION=1, STORE='fichas';
+const DB_NAME='vistoriaPassagemMolhadaDB', DB_VERSION=2, STORE='fichas', TILE_STORE='tiles';
 let dbPromise=null;
 function abrirDB(){
   if(dbPromise) return dbPromise;
@@ -789,11 +823,37 @@ function abrirDB(){
       if(!db.objectStoreNames.contains(STORE)){
         db.createObjectStore(STORE, {keyPath:'id'});
       }
+      if(!db.objectStoreNames.contains(TILE_STORE)){
+        db.createObjectStore(TILE_STORE);
+      }
     };
     req.onsuccess = e=>resolve(e.target.result);
     req.onerror = e=>reject(e);
   });
   return dbPromise;
+}
+async function tileGet(key){
+  const db = await abrirDB();
+  return new Promise((resolve)=>{
+    const tx = db.transaction(TILE_STORE,'readonly');
+    const req = tx.objectStore(TILE_STORE).get(key);
+    req.onsuccess = ()=>resolve(req.result || null);
+    req.onerror = ()=>resolve(null);
+  });
+}
+async function tilePut(key, blob){
+  const db = await abrirDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(TILE_STORE,'readwrite');
+    tx.objectStore(TILE_STORE).put(blob, key);
+    tx.oncomplete = resolve;
+    tx.onerror = reject;
+  });
+}
+async function tileCountCached(keys){
+  let n = 0;
+  for(const k of keys){ if(await tileGet(k)) n++; }
+  return n;
 }
 async function dbGetAll(){
   const db = await abrirDB();
@@ -874,10 +934,13 @@ function salvarConfig(){
 function showView(v){
   document.getElementById('view-form').classList.toggle('active', v==='form');
   document.getElementById('view-list').classList.toggle('active', v==='list');
+  document.getElementById('view-mapa').classList.toggle('active', v==='mapa');
   document.getElementById('tabFormBtn').classList.toggle('active', v==='form');
   document.getElementById('tabListBtn').classList.toggle('active', v==='list');
+  document.getElementById('tabMapaBtn').classList.toggle('active', v==='mapa');
   document.getElementById('bottomBarList').style.display = (v==='list') ? '' : 'none';
   if(v==='list') renderLista();
+  if(v==='mapa') renderMapaGeral();
 }
 function abrirLogoAmpliada(){
   document.getElementById('logoOverlay').classList.add('show');
@@ -885,6 +948,80 @@ function abrirLogoAmpliada(){
 function fecharLogoAmpliada(){
   document.getElementById('logoOverlay').classList.remove('show');
 }
+
+/* ======================================================================
+   MEDIÇÃO DE COMPRIMENTO POR GPS (2+ pontos, soma dos trechos)
+   ====================================================================== */
+let pontosMedicao = [];
+let campoAlvoMedicao = null;
+
+function distanciaMetrosUTM(e1, n1, e2, n2){
+  return Math.sqrt((e2-e1)**2 + (n2-n1)**2);
+}
+function distanciaTotalMedicao(){
+  let total = 0;
+  for(let i=1;i<pontosMedicao.length;i++){
+    total += distanciaMetrosUTM(pontosMedicao[i-1].e, pontosMedicao[i-1].n, pontosMedicao[i].e, pontosMedicao[i].n);
+  }
+  return total;
+}
+function abrirMedicaoGps(campoId){
+  campoAlvoMedicao = campoId;
+  pontosMedicao = [];
+  renderMedicaoOverlay();
+  document.getElementById('medicaoOverlay').classList.add('show');
+}
+function fecharMedicaoGps(){
+  document.getElementById('medicaoOverlay').classList.remove('show');
+  campoAlvoMedicao = null;
+}
+function renderMedicaoOverlay(){
+  const lista = document.getElementById('medicaoPontos');
+  const total = distanciaTotalMedicao();
+  lista.innerHTML = pontosMedicao.length ? pontosMedicao.map((p,i)=>
+    '<div class="entry-meta" style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);">'+
+    '<span>Ponto '+(i+1)+' — E '+p.e.toFixed(1)+', N '+p.n.toFixed(1)+' (fuso '+p.zona+')</span>'+
+    '<button class="link-btn" style="color:var(--danger);" onclick="removerPontoMedicao('+i+')">remover</button></div>'
+  ).join('') : '<div class="hint" style="margin:0;">Nenhum ponto marcado ainda.</div>';
+  document.getElementById('medicaoTotal').textContent = pontosMedicao.length>=2
+    ? total.toFixed(2)+' m'
+    : (pontosMedicao.length===1 ? 'marque mais um ponto' : '—');
+  document.getElementById('btnAplicarMedicao').disabled = pontosMedicao.length<2;
+}
+function marcarPontoMedicao(){
+  const btn = document.getElementById('btnMarcarPonto');
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Obtendo sinal de GPS...';
+  obterPosicaoAtual({enableHighAccuracy:true, timeout:15000, maximumAge:0}).then(function(pos){
+    const utm = latLonParaUTM(pos.coords.latitude, pos.coords.longitude);
+    pontosMedicao.push({e:parseFloat(utm.easting), n:parseFloat(utm.northing), zona:utm.zona});
+    renderMedicaoOverlay();
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }).catch(function(err){
+    let msg = 'Não foi possível obter a localização.';
+    if(err && err.code===1) msg = 'Permissão de localização negada.';
+    else if(err && err.code===3) msg = 'Tempo esgotado buscando sinal.';
+    else if(err && err.message) msg = 'Erro no GPS: '+err.message;
+    toast(msg);
+    btn.disabled = false;
+    btn.innerHTML = original;
+  });
+}
+function removerPontoMedicao(idx){
+  pontosMedicao.splice(idx,1);
+  renderMedicaoOverlay();
+}
+function aplicarMedicaoGps(){
+  if(pontosMedicao.length<2) return;
+  const total = distanciaTotalMedicao();
+  fichaAtual[campoAlvoMedicao] = total.toFixed(2);
+  renderPasso();
+  fecharMedicaoGps();
+  toast('Comprimento preenchido: '+total.toFixed(2)+' m');
+}
+
 function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -897,7 +1034,10 @@ function toast(msg){
    WIZARD — renderização dinâmica do passo atual
    ====================================================================== */
 function iniciarNovaFicha(){
-  fichaAtual = {};
+  const agora = new Date();
+  const dataHoje = agora.toISOString().slice(0,10);
+  const horaAgora = agora.toTimeString().slice(0,5);
+  fichaAtual = {data_vistoria: dataHoje, hora_vistoria: horaAgora};
   fotosAtual = {montante:null, jusante:null, estrutura:null, extras:[]};
   editandoId = null;
   passoAtualIdx = 0;
@@ -921,7 +1061,13 @@ function renderPasso(){
       'Obter UTM pelo GPS do celular</button>'+
       '<div class="hint" id="gpsUtmStatus" style="margin-top:-9px;">Toque para preencher Leste/Norte/Fuso automaticamente (aproximado — confirme com receptor GNSS quando possível)</div>'
       : '';
-    body.innerHTML = '<div class="card"><h2>'+step.titulo+'</h2>' + gpsBtn + step.campos.map(renderCampo).join('') + '</div>';
+    const mapaDetalheHtml = (step.id==='ident') ?
+      '<div class="field"><label class="flabel">Mapa do ponto (detalhe)</label>'+
+      '<div style="position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#dfe3d8;">'+
+      '<canvas id="mapaDetalheCanvas" style="display:block;width:100%;height:auto;"></canvas></div>'+
+      '<div class="hint" id="mapaDetalheStatus" style="margin-top:6px;">Sem coordenada capturada ainda.</div>'+
+      '</div>' : '';
+    body.innerHTML = '<div class="card"><h2>'+step.titulo+'</h2>' + gpsBtn + step.campos.map(renderCampo).join('') + mapaDetalheHtml + '</div>';
     // restaura estado dos "Outro"
     step.campos.forEach(c=>{
       if(c.outro){
@@ -931,6 +1077,7 @@ function renderPasso(){
         if(outroEl) outroEl.classList.toggle('show', !!temOutro);
       }
     });
+    if(step.id==='ident') renderMapaDetalheFicha();
   }
 }
 
@@ -961,7 +1108,9 @@ function renderCampo(c){
     if(c.outro) inner += '<div class="outro-input" id="outro_'+c.id+'"><input type="text" data-field="'+c.id+'_outro" placeholder="Especifique" value="'+escapeAttr(fichaAtual[c.id+'_outro']||'')+'"></div>';
   }
   const hint = c.hint ? '<div class="hint">'+escapeHtml(c.hint)+'</div>' : '';
-  return '<div class="field"><label class="flabel">'+escapeHtml(c.label)+'</label>'+inner+hint+'</div>';
+  const medirBtn = c.medirGps ? '<button type="button" class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="abrirMedicaoGps(\''+c.id+'\')">📏 Medir por GPS (2+ pontos)</button>' : '';
+  const geoBtn = c.geocodificar ? '<button type="button" class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="obterMunicipioGps()" id="btnGeoMunicipio">📍 Obter pelo GPS (precisa de internet)</button><div class="hint" id="geoMunicipioStatus" style="margin-top:6px;"></div>' : '';
+  return '<div class="field"><label class="flabel">'+escapeHtml(c.label)+'</label>'+inner+hint+medirBtn+geoBtn+'</div>';
 }
 
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -995,6 +1144,9 @@ function onWizardInput(e){
     }
   } else {
     fichaAtual[fid] = el.value;
+    if(fid==='utm_e' || fid==='utm_n' || fid==='utm_fuso'){
+      fichaAtual['coordenadas_editadas_manualmente'] = true;
+    }
   }
 }
 
@@ -1043,11 +1195,52 @@ function obterPosicaoAtual(opcoes){
   // que trata a permissão do Android corretamente. No navegador/PWA, usa a API padrão.
   if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() &&
      window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation){
-    return window.Capacitor.Plugins.Geolocation.getCurrentPosition(opcoes);
+    try{
+      const p = window.Capacitor.Plugins.Geolocation.getCurrentPosition(opcoes);
+      if(p && typeof p.then === 'function') return p;
+    }catch(e){ /* cai para o fallback abaixo */ }
   }
   return new Promise((resolve, reject)=>{
     if(!navigator.geolocation){ reject({code:2, message:'Geolocalização não suportada'}); return; }
     navigator.geolocation.getCurrentPosition(resolve, reject, opcoes);
+  });
+}
+
+function obterMunicipioGps(){
+  const statusEl = document.getElementById('geoMunicipioStatus');
+  const btn = document.getElementById('btnGeoMunicipio');
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Obtendo localização...';
+  statusEl.textContent = '';
+  obterPosicaoAtual({enableHighAccuracy:true, timeout:15000, maximumAge:0}).then(function(pos){
+    btn.innerHTML = 'Consultando município (internet)...';
+    const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+pos.coords.latitude+'&lon='+pos.coords.longitude+'&zoom=10&addressdetails=1';
+    return fetch(url, {headers:{'Accept':'application/json'}}).then(r=>r.json()).then(function(data){
+      const addr = data.address || {};
+      const municipio = addr.municipality || addr.city || addr.town || addr.village || addr.county;
+      if(municipio){
+        fichaAtual['municipio'] = municipio;
+        renderPasso();
+        setTimeout(()=>{
+          const s = document.getElementById('geoMunicipioStatus');
+          if(s) s.textContent = 'Preenchido: '+municipio+'. Confira antes de salvar.';
+        },0);
+      } else {
+        statusEl.textContent = 'Não foi possível identificar o município nesta localização.';
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    });
+  }).catch(function(err){
+    let msg = 'Não foi possível obter o município.';
+    if(err && err.code===1) msg = 'Permissão de localização negada.';
+    else if(err && err.code===3) msg = 'Tempo esgotado buscando sinal de GPS.';
+    else if(err instanceof TypeError) msg = 'Sem conexão com a internet no momento — tente novamente com sinal.';
+    else if(err && err.message) msg = 'Erro: '+err.message;
+    statusEl.textContent = msg;
+    btn.disabled = false;
+    btn.innerHTML = original;
   });
 }
 
@@ -1062,6 +1255,9 @@ function obterGpsUTM(){
     fichaAtual['utm_e'] = utm.easting;
     fichaAtual['utm_n'] = utm.northing;
     fichaAtual['utm_fuso'] = utm.zona;
+    fichaAtual['gps_lat'] = pos.coords.latitude;
+    fichaAtual['gps_lon'] = pos.coords.longitude;
+    fichaAtual['coordenadas_editadas_manualmente'] = false;
     renderPasso();
     setTimeout(()=>{
       const s = document.getElementById('gpsUtmStatus');
@@ -1069,8 +1265,9 @@ function obterGpsUTM(){
     },0);
   }).catch(function(err){
     let msg = 'Não foi possível obter a localização.';
-    if(err.code===1) msg = 'Permissão de localização negada. Ative o GPS/permissão do app.';
-    else if(err.code===3) msg = 'Tempo esgotado buscando sinal. Tente novamente em campo aberto.';
+    if(err && err.code===1) msg = 'Permissão de localização negada. Ative o GPS/permissão do app.';
+    else if(err && err.code===3) msg = 'Tempo esgotado buscando sinal. Tente novamente em campo aberto.';
+    else if(err && err.message) msg = 'Erro no GPS: '+err.message;
     statusEl.textContent = msg;
     btn.disabled = false;
     btn.innerHTML = original;
@@ -1078,23 +1275,264 @@ function obterGpsUTM(){
 }
 
 /* ======================================================================
+   UTM -> LAT/LON (inverso, para exibir marcador mesmo em coordenadas
+   digitadas manualmente ou de fichas antigas)
+   ====================================================================== */
+function utmParaLatLon(easting, northing, zonaTexto){
+  if(!zonaTexto) return null;
+  const m = String(zonaTexto).match(/(\d+)\s*([NnSs])?/);
+  if(!m) return null;
+  const zonaNum = parseInt(m[1],10);
+  const hemisferioNorte = (m[2]||'N').toUpperCase() !== 'S';
+  const a = 6378137.0, e = 0.0818191908;
+  const k0 = 0.9996;
+  const e2sq = e*e/(1-e*e);
+  const x = parseFloat(easting) - 500000.0;
+  let y = parseFloat(northing);
+  if(!hemisferioNorte) y -= 10000000.0;
+  if(isNaN(x) || isNaN(y) || isNaN(zonaNum)) return null;
+  const mDist = y / k0;
+  const mu = mDist / (a*(1 - e*e/4 - 3*Math.pow(e,4)/64 - 5*Math.pow(e,6)/256));
+  const e1 = (1 - Math.sqrt(1-e*e)) / (1 + Math.sqrt(1-e*e));
+  const j1 = 3*e1/2 - 27*Math.pow(e1,3)/32;
+  const j2 = 21*Math.pow(e1,2)/16 - 55*Math.pow(e1,4)/32;
+  const j3 = 151*Math.pow(e1,3)/96;
+  const j4 = 1097*Math.pow(e1,4)/512;
+  const fp = mu + j1*Math.sin(2*mu) + j2*Math.sin(4*mu) + j3*Math.sin(6*mu) + j4*Math.sin(8*mu);
+  const c1 = e2sq*Math.pow(Math.cos(fp),2);
+  const t1 = Math.pow(Math.tan(fp),2);
+  const r1 = a*(1-e*e)/Math.pow(1-e*e*Math.pow(Math.sin(fp),2), 1.5);
+  const n1 = a/Math.sqrt(1-e*e*Math.pow(Math.sin(fp),2));
+  const d = x/(n1*k0);
+  const lat = fp - (n1*Math.tan(fp)/r1)*(d*d/2 - (5+3*t1+10*c1-4*c1*c1-9*e2sq)*Math.pow(d,4)/24 + (61+90*t1+298*c1+45*t1*t1-252*e2sq-3*c1*c1)*Math.pow(d,6)/720);
+  const lon = (d - (1+2*t1+c1)*Math.pow(d,3)/6 + (5-2*c1+28*t1-3*c1*c1+8*e2sq+24*t1*t1)*Math.pow(d,5)/120) / Math.cos(fp);
+  const zoneCentralMeridian = (zonaNum-1)*6 - 180 + 3;
+  return { lat: lat*180/Math.PI, lon: zoneCentralMeridian + lon*180/Math.PI };
+}
+
+/* ======================================================================
+   MAPA OFFLINE — contorno do KML + cache de imagens de satélite (tiles)
+   ====================================================================== */
+// Polígono da área de estudo (extraído do geral.kml) — [lon, lat]
+const KML_POLYGON = [[-38.025140,-5.853039],[-38.025138,-5.852360],[-38.023766,-5.850322],[-38.021031,-5.850319],[-36.998002,-5.852575],[-36.998550,-5.142382],[-38.019345,-5.141408],[-38.025140,-5.853039]];
+const TILE_URL = (z,x,y) => 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+y+'/'+x;
+const MAPA_GERAL_ZOOM = 12;
+const MAPA_DETALHE_ZOOM = 17;
+const MAPA_DETALHE_RAIO = 1; // tiles ao redor do centro (raio 1 = grade 3x3)
+
+function kmlBBox(){
+  let minLon=Infinity, maxLon=-Infinity, minLat=Infinity, maxLat=-Infinity;
+  KML_POLYGON.forEach(([lon,lat])=>{
+    if(lon<minLon) minLon=lon; if(lon>maxLon) maxLon=lon;
+    if(lat<minLat) minLat=lat; if(lat>maxLat) maxLat=lat;
+  });
+  return {minLon,maxLon,minLat,maxLat};
+}
+function lon2x(lon, z){ return (lon+180)/360 * Math.pow(2,z); }
+function lat2y(lat, z){
+  const r = lat*Math.PI/180;
+  return (1 - Math.log(Math.tan(r) + 1/Math.cos(r))/Math.PI) / 2 * Math.pow(2,z);
+}
+function tileRangeForBBox(bbox, z){
+  const xMin = Math.floor(lon2x(bbox.minLon, z));
+  const xMax = Math.floor(lon2x(bbox.maxLon, z));
+  const yMin = Math.floor(lat2y(bbox.maxLat, z)); // maxLat -> menor y
+  const yMax = Math.floor(lat2y(bbox.minLat, z));
+  return {xMin, xMax, yMin, yMax};
+}
+async function fetchTileComCache(z,x,y){
+  const key = z+'_'+x+'_'+y;
+  const cached = await tileGet(key);
+  if(cached) return cached;
+  try{
+    const resp = await fetch(TILE_URL(z,x,y));
+    if(!resp.ok) return null;
+    const blob = await resp.blob();
+    await tilePut(key, blob);
+    return blob;
+  }catch(e){ return null; }
+}
+async function desenharTilesEmCanvas(ctx, range, z, tileSizePx, offsetXtiles, offsetYtiles, somenteCache){
+  for(let x=range.xMin; x<=range.xMax; x++){
+    for(let y=range.yMin; y<=range.yMax; y++){
+      const key = z+'_'+x+'_'+y;
+      const blob = somenteCache ? await tileGet(key) : await fetchTileComCache(z,x,y);
+      if(!blob) continue;
+      try{
+        const bmp = await createImageBitmap(blob);
+        const px = (x-offsetXtiles)*tileSizePx;
+        const py = (y-offsetYtiles)*tileSizePx;
+        ctx.drawImage(bmp, px, py, tileSizePx, tileSizePx);
+      }catch(e){}
+    }
+  }
+}
+function desenharPoligonoKml(ctx, z, offsetXtiles, offsetYtiles, tileSizePx){
+  ctx.beginPath();
+  KML_POLYGON.forEach(([lon,lat], i)=>{
+    const px = (lon2x(lon,z)-offsetXtiles)*tileSizePx;
+    const py = (lat2y(lat,z)-offsetYtiles)*tileSizePx;
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  });
+  ctx.strokeStyle = '#F2C230';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8,5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+function desenharPin(ctx, lon, lat, z, offsetXtiles, offsetYtiles, tileSizePx, cor){
+  const px = (lon2x(lon,z)-offsetXtiles)*tileSizePx;
+  const py = (lat2y(lat,z)-offsetYtiles)*tileSizePx;
+  ctx.beginPath();
+  ctx.arc(px, py, 6, 0, Math.PI*2);
+  ctx.fillStyle = cor;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#fff';
+  ctx.stroke();
+  return {px,py};
+}
+
+/* ---- Mapa geral (aba Mapa) ---- */
+let ultimaPosicaoMapaGeral = null;
+async function renderMapaGeral(){
+  const canvas = document.getElementById('mapaCanvas');
+  const statusEl = document.getElementById('mapaStatus');
+  if(!canvas) return;
+  const bbox = kmlBBox();
+  const z = MAPA_GERAL_ZOOM;
+  const range = tileRangeForBBox(bbox, z);
+  const tileSizePx = 256;
+  const wTiles = range.xMax-range.xMin+1, hTiles = range.yMax-range.yMin+1;
+  canvas.width = wTiles*tileSizePx;
+  canvas.height = hTiles*tileSizePx;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#dfe3d8';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  const chaves = [];
+  for(let x=range.xMin;x<=range.xMax;x++) for(let y=range.yMin;y<=range.yMax;y++) chaves.push(z+'_'+x+'_'+y);
+  const cachedN = await tileCountCached(chaves);
+  statusEl.textContent = cachedN+' de '+chaves.length+' blocos de imagem em cache';
+
+  await desenharTilesEmCanvas(ctx, range, z, tileSizePx, range.xMin, range.yMin, true);
+  desenharPoligonoKml(ctx, z, range.xMin, range.yMin, tileSizePx);
+  fichas.forEach(f=>{
+    const ll = obterLatLonFicha(f);
+    if(ll) desenharPin(ctx, ll.lon, ll.lat, z, range.xMin, range.yMin, tileSizePx, '#A33B2E');
+  });
+  if(ultimaPosicaoMapaGeral) desenharPin(ctx, ultimaPosicaoMapaGeral.lon, ultimaPosicaoMapaGeral.lat, z, range.xMin, range.yMin, tileSizePx, '#2E6BE0');
+}
+async function baixarTilesMapaGeral(){
+  const btn = document.getElementById('btnBaixarMapa');
+  const statusEl = document.getElementById('mapaStatus');
+  const original = btn.innerHTML;
+  const bbox = kmlBBox();
+  const z = MAPA_GERAL_ZOOM;
+  const range = tileRangeForBBox(bbox, z);
+  const tiles = [];
+  for(let x=range.xMin;x<=range.xMax;x++) for(let y=range.yMin;y<=range.yMax;y++) tiles.push([x,y]);
+  let feitos = 0, sucesso = 0;
+  btn.disabled = true;
+  for(const [x,y] of tiles){
+    const r = await fetchTileComCache(z,x,y);
+    if(r) sucesso++;
+    feitos++;
+    statusEl.textContent = 'Baixando imagens do mapa: '+feitos+'/'+tiles.length+' blocos...';
+  }
+  btn.disabled = false;
+  btn.innerHTML = original;
+  if(sucesso===0){
+    toast('Não consegui baixar nenhuma imagem — confira a conexão com a internet.');
+  } else {
+    toast('Mapa geral atualizado ('+sucesso+' blocos baixados)');
+  }
+  renderMapaGeral();
+}
+function atualizarMinhaLocalizacaoMapa(){
+  const statusEl = document.getElementById('mapaStatus');
+  obterPosicaoAtual({enableHighAccuracy:true, timeout:15000, maximumAge:0}).then(pos=>{
+    ultimaPosicaoMapaGeral = {lat:pos.coords.latitude, lon:pos.coords.longitude};
+    renderMapaGeral();
+  }).catch(()=>{ toast('Não foi possível obter sua localização agora.'); });
+}
+function obterLatLonFicha(f){
+  if(f.gps_lat!=null && f.gps_lon!=null) return {lat:f.gps_lat, lon:f.gps_lon};
+  if(f.utm_e && f.utm_n && f.utm_fuso) return utmParaLatLon(f.utm_e, f.utm_n, f.utm_fuso);
+  return null;
+}
+
+/* ---- Mapa de detalhe (dentro da ficha, Seção 1) ---- */
+async function renderMapaDetalheFicha(){
+  const canvas = document.getElementById('mapaDetalheCanvas');
+  const statusEl = document.getElementById('mapaDetalheStatus');
+  if(!canvas) return;
+  let ll = null;
+  if(fichaAtual.gps_lat!=null && fichaAtual.gps_lon!=null) ll = {lat:fichaAtual.gps_lat, lon:fichaAtual.gps_lon};
+  else if(fichaAtual.utm_e && fichaAtual.utm_n && fichaAtual.utm_fuso) ll = utmParaLatLon(fichaAtual.utm_e, fichaAtual.utm_n, fichaAtual.utm_fuso);
+  if(!ll){
+    statusEl.textContent = 'Sem coordenada capturada ainda.';
+    canvas.width = 10; canvas.height = 10;
+    return;
+  }
+  const z = MAPA_DETALHE_ZOOM;
+  const cx = Math.floor(lon2x(ll.lon, z));
+  const cy = Math.floor(lat2y(ll.lat, z));
+  const range = {xMin:cx-MAPA_DETALHE_RAIO, xMax:cx+MAPA_DETALHE_RAIO, yMin:cy-MAPA_DETALHE_RAIO, yMax:cy+MAPA_DETALHE_RAIO};
+  const tileSizePx = 256;
+  const wTiles = range.xMax-range.xMin+1, hTiles = range.yMax-range.yMin+1;
+  canvas.width = wTiles*tileSizePx;
+  canvas.height = hTiles*tileSizePx;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#dfe3d8';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  const chaves = [];
+  for(let x=range.xMin;x<=range.xMax;x++) for(let y=range.yMin;y<=range.yMax;y++) chaves.push(z+'_'+x+'_'+y);
+  const cachedN = await tileCountCached(chaves);
+  const manual = !!fichaAtual.coordenadas_editadas_manualmente;
+
+  await desenharTilesEmCanvas(ctx, range, z, tileSizePx, range.xMin, range.yMin, true);
+  desenharPin(ctx, ll.lon, ll.lat, z, range.xMin, range.yMin, tileSizePx, '#A33B2E');
+  statusEl.textContent = (manual ? 'Coordenada editada manualmente — imagem não é atualizada automaticamente. ' : '')
+    + cachedN+'/'+chaves.length+' blocos em cache.';
+
+  // Atualiza em segundo plano se a coordenada não foi editada manualmente (tenta buscar; se não houver internet, a busca falha silenciosamente e mantém o que já está em cache)
+  if(!manual && cachedN < chaves.length){
+    statusEl.textContent += ' Buscando imagem de detalhe...';
+    await desenharTilesEmCanvas(ctx, range, z, tileSizePx, range.xMin, range.yMin, false);
+    desenharPin(ctx, ll.lon, ll.lat, z, range.xMin, range.yMin, tileSizePx, '#A33B2E');
+    const cachedDepois = await tileCountCached(chaves);
+    statusEl.textContent = cachedDepois+'/'+chaves.length+' blocos em cache'+(cachedDepois>cachedN?' (atualizado).':'.');
+  }
+}
+
+/* ======================================================================
    FOTOS — 3 slots obrigatórios (montante / jusante / estrutura) + extras
    ====================================================================== */
 function renderPassoFotos(){
   let html = '<div class="card"><h2>Registro fotográfico</h2>';
-  html += '<div class="hint">Toque em cada slot para abrir a câmera. As coordenadas informadas na Seção 1 são gravadas automaticamente na foto.</div>';
+  html += '<div class="hint">Tire a foto na hora ou escolha da galeria. As coordenadas informadas na Seção 1 são gravadas automaticamente na foto.</div>';
   PHOTO_SLOTS.forEach(slot=>{
     const foto = fotosAtual[slot.id];
     html += '<div class="photo-slot">'+
       '<div class="slot-title"><span>'+slot.label+'</span><span class="req '+(foto?'ok':'')+'">'+(foto?'Capturada':'Pendente')+'</span></div>'+
       (foto ? '<div class="photo-preview"><img src="'+foto.dataUrl+'"></div>' : '<div class="photo-preview empty">Sem foto</div>')+
-      '<input type="file" accept="image/*" id="input_'+slot.id+'" style="display:none" onchange="onFotoSlotSelecionada(event,\''+slot.id+'\')">'+
-      '<button class="btn btn-outline btn-sm" style="width:100%;" onclick="document.getElementById(\'input_'+slot.id+'\').click()">'+(foto?'Capturar novamente':'Abrir câmera')+'</button>'+
+      '<input type="file" accept="image/*" capture="environment" id="cam_'+slot.id+'" style="display:none" onchange="onFotoSlotSelecionada(event,\''+slot.id+'\')">'+
+      '<input type="file" accept="image/*" id="gal_'+slot.id+'" style="display:none" onchange="onFotoSlotSelecionada(event,\''+slot.id+'\')">'+
+      '<div class="btn-row">'+
+      '<button class="btn btn-amber btn-sm" style="flex:1;" onclick="document.getElementById(\'cam_'+slot.id+'\').click()">📷 Tirar foto agora</button>'+
+      '<button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById(\'gal_'+slot.id+'\').click()">Escolher da galeria</button>'+
+      '</div>'+
       '</div>';
   });
   html += '<div class="field"><label class="flabel">Fotos adicionais (opcional — evidências extras)</label>';
-  html += '<input type="file" accept="image/*" id="input_extra" style="display:none" onchange="onFotoExtraSelecionada(event)">';
-  html += '<button class="btn btn-outline btn-sm" style="width:100%;" onclick="document.getElementById(\'input_extra\').click()">+ Adicionar foto extra</button>';
+  html += '<input type="file" accept="image/*" capture="environment" id="cam_extra" style="display:none" onchange="onFotoExtraSelecionada(event)">';
+  html += '<input type="file" accept="image/*" id="gal_extra" style="display:none" onchange="onFotoExtraSelecionada(event)">';
+  html += '<div class="btn-row">'+
+    '<button class="btn btn-amber btn-sm" style="flex:1;" onclick="document.getElementById(\'cam_extra\').click()">📷 Tirar foto</button>'+
+    '<button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById(\'gal_extra\').click()">Da galeria</button>'+
+    '</div>';
   html += '<div class="extras-grid" id="extrasGrid">' + fotosAtual.extras.map((f,idx)=>
       '<div class="photo-thumb"><img src="'+f.dataUrl+'"><button class="rm" onclick="removerFotoExtra('+idx+')">&times;</button></div>'
     ).join('') + '</div>';
@@ -1543,7 +1981,25 @@ async function gerarRelatorioPDF(ids){
   carregarConfig();
   await recarregarFichas();
   iniciarNovaFicha();
+  baixarMapaGeralEmSegundoPlanoSeNecessario();
 })();
+
+async function baixarMapaGeralEmSegundoPlanoSeNecessario(){
+  const bbox = kmlBBox();
+  const range = tileRangeForBBox(bbox, MAPA_GERAL_ZOOM);
+  const chaves = [];
+  for(let x=range.xMin;x<=range.xMax;x++) for(let y=range.yMin;y<=range.yMax;y++) chaves.push(MAPA_GERAL_ZOOM+'_'+x+'_'+y);
+  const cachedN = await tileCountCached(chaves);
+  if(cachedN >= chaves.length) return; // já está tudo em cache, nada a fazer
+  let falhasSeguidas = 0;
+  for(const key of chaves){
+    const [z,x,y] = key.split('_').map(Number);
+    const r = await fetchTileComCache(z,x,y);
+    falhasSeguidas = r ? 0 : falhasSeguidas+1;
+    if(falhasSeguidas>=8) break; // sem internet mesmo, para de tentar pra não travar o app
+  }
+  if(document.getElementById('tabMapaBtn').classList.contains('active')) renderMapaGeral();
+}
 </script>
 </body>
 </html>
