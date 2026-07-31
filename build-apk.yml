@@ -1,0 +1,43 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Sincronizar Capacitor
+        run: npx cap sync android
+
+      - name: Permissão de execução do gradlew
+        run: chmod +x android/gradlew
+
+      - name: Compilar APK (debug)
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Publicar APK gerado
+        uses: actions/upload-artifact@v4
+        with:
+          name: passagem-molhada-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
