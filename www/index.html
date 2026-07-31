@@ -728,7 +728,7 @@ const STEPS = [
     {id:'comprimento', label:'Comprimento (m)', type:'number', w:'half', medirGps:true},
     {id:'largura_plataforma', label:'Largura da plataforma (m)', type:'number', w:'half', medirGps:true},
     {id:'altura_maxima', label:'Altura máxima (m)', type:'number', w:'half'},
-    {id:'cota_tabuleiro', label:'Cota do tabuleiro (m)', type:'number', w:'half'},
+    {id:'cota_tabuleiro', label:'Cota do tabuleiro (m)', type:'number', w:'half', elevacaoRef:true},
     {id:'material_construtivo', label:'Material construtivo', type:'checkbox', options:['Concreto','Alvenaria','Gabião','Madeira','Metálico','Outro'], outro:true},
     {id:'tipo_barramento', label:'Tipo do barramento do leito do rio', type:'radio', options:['Parcial','Total']},
     {id:'ano_construcao', label:'Ano da construção', type:'number', w:'half'},
@@ -1110,7 +1110,8 @@ function renderCampo(c){
   const hint = c.hint ? '<div class="hint">'+escapeHtml(c.hint)+'</div>' : '';
   const medirBtn = c.medirGps ? '<button type="button" class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="abrirMedicaoGps(\''+c.id+'\')">📏 Medir por GPS (2+ pontos)</button>' : '';
   const geoBtn = c.geocodificar ? '<button type="button" class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="obterMunicipioGps()" id="btnGeoMunicipio">📍 Obter pelo GPS (precisa de internet)</button><div class="hint" id="geoMunicipioStatus" style="margin-top:6px;"></div>' : '';
-  return '<div class="field"><label class="flabel">'+escapeHtml(c.label)+'</label>'+inner+hint+medirBtn+geoBtn+'</div>';
+  const elevBtn = c.elevacaoRef ? '<button type="button" class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="obterElevacaoGps()" id="btnElevacao">⛰️ Obter do modelo de elevação (referência, precisa de internet)</button><div class="hint" id="elevacaoStatus" style="margin-top:6px;">Cota do terreno, não da estrutura — ajuste conforme a altura real do tabuleiro.</div>' : '';
+  return '<div class="field"><label class="flabel">'+escapeHtml(c.label)+'</label>'+inner+hint+medirBtn+geoBtn+elevBtn+'</div>';
 }
 
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1234,6 +1235,43 @@ function obterMunicipioGps(){
     });
   }).catch(function(err){
     let msg = 'Não foi possível obter o município.';
+    if(err && err.code===1) msg = 'Permissão de localização negada.';
+    else if(err && err.code===3) msg = 'Tempo esgotado buscando sinal de GPS.';
+    else if(err instanceof TypeError) msg = 'Sem conexão com a internet no momento — tente novamente com sinal.';
+    else if(err && err.message) msg = 'Erro: '+err.message;
+    statusEl.textContent = msg;
+    btn.disabled = false;
+    btn.innerHTML = original;
+  });
+}
+
+function obterElevacaoGps(){
+  const statusEl = document.getElementById('elevacaoStatus');
+  const btn = document.getElementById('btnElevacao');
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Obtendo localização...';
+  obterPosicaoAtual({enableHighAccuracy:true, timeout:15000, maximumAge:0}).then(function(pos){
+    btn.innerHTML = 'Consultando modelo de elevação (internet)...';
+    const url = 'https://api.open-elevation.com/api/v1/lookup?locations='+pos.coords.latitude+','+pos.coords.longitude;
+    return fetch(url).then(r=>r.json()).then(function(data){
+      const resultado = data && data.results && data.results[0];
+      const elevacao = resultado ? resultado.elevation : null;
+      if(elevacao!=null){
+        fichaAtual['cota_tabuleiro'] = elevacao.toFixed(1);
+        renderPasso();
+        setTimeout(()=>{
+          const s = document.getElementById('elevacaoStatus');
+          if(s) s.textContent = 'Cota do terreno: '+elevacao.toFixed(1)+' m (referência SRTM ~30m). Ajuste para a cota real do tabuleiro.';
+        },0);
+      } else {
+        statusEl.textContent = 'Não foi possível obter a elevação nesta localização.';
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    });
+  }).catch(function(err){
+    let msg = 'Não foi possível obter a elevação.';
     if(err && err.code===1) msg = 'Permissão de localização negada.';
     else if(err && err.code===3) msg = 'Tempo esgotado buscando sinal de GPS.';
     else if(err instanceof TypeError) msg = 'Sem conexão com a internet no momento — tente novamente com sinal.';
